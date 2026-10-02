@@ -141,6 +141,32 @@ footer .logo{background:none;padding:0}
 .fab{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;width:58px;height:58px;border-radius:50%;background:#25D366;color:#fff;display:none;place-items:center;box-shadow:0 10px 24px rgba(0,0,0,.25)}
 .fab svg{width:30px;height:30px}
 
+
+/* background music controller */
+.music-player{
+  position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  z-index:60;width:min(360px,calc(100vw - 96px));padding:12px 14px;
+  background:rgba(29,20,14,.94);color:#fff;border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;box-shadow:0 10px 28px rgba(0,0,0,.25);backdrop-filter:blur(10px);
+}
+.music-row{display:flex;align-items:center;gap:10px}
+.music-toggle{flex:0 0 40px;width:40px;height:40px;border:0;border-radius:50%;
+  display:grid;place-items:center;background:var(--orange);color:#fff;cursor:pointer}
+.music-toggle:hover{background:var(--orange-d)}
+.music-toggle svg{width:19px;height:19px}
+.music-info{min-width:0;flex:1}
+.music-title{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:.78rem;font-weight:700;line-height:1.3}
+.music-status{font-size:.68rem;color:#BFAF9F;margin-top:2px}
+.music-volume{width:72px;accent-color:var(--orange);cursor:pointer}
+.music-progress{width:100%;margin-top:9px;display:block;accent-color:var(--orange);cursor:pointer}
+.music-player input[type="range"]{height:4px}
+@media (max-width:600px){
+  .music-player{left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:calc(100vw - 88px);padding:10px 11px;border-radius:14px}
+  .music-toggle{width:36px;height:36px;flex-basis:36px}
+  .music-toggle svg{width:17px;height:17px}
+  .music-volume{width:58px}.music-title{font-size:.72rem}
+}
+
 /* responsive */
 @media (max-width:1060px){
   .menu{gap:20px;padding:14px 20px}
@@ -337,10 +363,100 @@ footer .logo{background:none;padding:0}
   </div>
 </footer>
 
+
+<audio id="backgroundMusic" loop preload="auto" aria-label="Musik latar OLSEN">
+  <source src="OLSEN — GOOD COFFEE, GOOD PEOPLE.mpeg" type="audio/mpeg">
+</audio>
+
+<div class="music-player" id="musicPlayer" aria-label="Kontrol musik latar">
+  <div class="music-row">
+    <button class="music-toggle" id="musicToggle" type="button" aria-label="Putar musik" aria-pressed="false">
+      <svg id="musicPlayIcon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M8 5.5v13a1 1 0 0 0 1.54.84l9.2-6.5a1 1 0 0 0 0-1.68l-9.2-6.5A1 1 0 0 0 8 5.5z"/>
+      </svg>
+      <svg id="musicPauseIcon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:none">
+        <path d="M7 5h3v14H7zM14 5h3v14h-3z"/>
+      </svg>
+    </button>
+    <div class="music-info">
+      <div class="music-title">OLSEN — GOOD COFFEE, GOOD PEOPLE</div>
+      <div class="music-status" id="musicStatus">Musik siap diputar</div>
+    </div>
+    <input class="music-volume" id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.65" aria-label="Volume musik">
+  </div>
+  <input class="music-progress" id="musicProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="Posisi musik">
+</div>
+
 <a class="fab" href="https://wa.me/6287879105129?text=Halo%20OLSEN%2C%20saya%20mau%20pesan" target="_blank" rel="noopener" aria-label="Pesan via WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 2.9 2.9 0 0 0-.9 2.2 5 5 0 0 0 1 2.7 11.6 11.6 0 0 0 4.5 3.9c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.2c0-.1-.2-.2-.5-.3z"/></svg></a>
 
 <script>
 (function(){
+
+  // Background music + custom controller
+  var audio=document.getElementById('backgroundMusic');
+  var musicToggle=document.getElementById('musicToggle');
+  var musicVolume=document.getElementById('musicVolume');
+  var musicProgress=document.getElementById('musicProgress');
+  var musicStatus=document.getElementById('musicStatus');
+  var playIcon=document.getElementById('musicPlayIcon');
+  var pauseIcon=document.getElementById('musicPauseIcon');
+  var musicUserInteracted=false;
+
+  audio.volume=Number(musicVolume.value);
+
+  function updateMusicUI(){
+    var playing=!audio.paused;
+    playIcon.style.display=playing?'none':'block';
+    pauseIcon.style.display=playing?'block':'none';
+    musicToggle.setAttribute('aria-label',playing?'Jeda musik':'Putar musik');
+    musicToggle.setAttribute('aria-pressed',playing?'true':'false');
+    musicStatus.textContent=playing?'Sedang diputar':(audio.currentTime>0?'Musik dijeda':'Musik siap diputar');
+  }
+
+  function playMusic(){
+    audio.play().then(function(){updateMusicUI();}).catch(function(){
+      musicStatus.textContent='Klik tombol play untuk memulai';
+      updateMusicUI();
+    });
+  }
+
+  musicToggle.addEventListener('click',function(){
+    musicUserInteracted=true;
+    if(audio.paused){playMusic();}else{audio.pause();updateMusicUI();}
+  });
+
+  musicVolume.addEventListener('input',function(){
+    audio.volume=Number(this.value);
+    if(audio.volume>0) audio.muted=false;
+  });
+
+  musicProgress.addEventListener('input',function(){
+    if(Number.isFinite(audio.duration) && audio.duration>0)
+      audio.currentTime=(Number(this.value)/100)*audio.duration;
+  });
+
+  audio.addEventListener('timeupdate',function(){
+    if(Number.isFinite(audio.duration) && audio.duration>0)
+      musicProgress.value=(audio.currentTime/audio.duration)*100;
+  });
+  audio.addEventListener('play',updateMusicUI);
+  audio.addEventListener('pause',updateMusicUI);
+  audio.addEventListener('error',function(){musicStatus.textContent='File musik tidak ditemukan';});
+
+  window.addEventListener('load',function(){playMusic();});
+
+  function enableMusicAfterInteraction(){
+    if(musicUserInteracted || !audio.paused) return;
+    musicUserInteracted=true;
+    audio.muted=false;
+    audio.volume=Number(musicVolume.value);
+    playMusic();
+  }
+
+  ['pointerdown','keydown','touchstart'].forEach(function(eventName){
+    document.addEventListener(eventName,enableMusicAfterInteraction,{once:true,passive:true});
+  });
+
   var h=document.querySelector('header'),m=document.getElementById('menu'),b=document.getElementById('burger');
   function s(){h.classList.toggle('scrolled',window.scrollY>40)} s(); window.addEventListener('scroll',s,{passive:true});
   b.addEventListener('click',function(){var o=m.classList.toggle('open');b.setAttribute('aria-expanded',o)});
